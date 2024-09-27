@@ -1,0 +1,256 @@
+// Инициализация переменных и элементов
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let score = 0;
+let gameRunning = true;
+let difficulty = 'medium';
+
+// Загрузка изображений
+const backgroundImg = new Image();
+backgroundImg.src = './assets/дорога.png';
+
+const playerImg = new Image();
+playerImg.src = './assets/RR.png';
+
+const obstacleImg = new Image();
+obstacleImg.src = './assets/OIP.png';
+
+const coinImg = new Image();
+coinImg.src = './assets/coin.png';
+
+// Настройки игрока
+const player = {
+  width: 120,
+  height: 120,
+  x: canvas.width / 2 - 60,
+  y: canvas.height / 1.1 - 60,
+  speed: 5,
+  dx: 0
+};
+
+// Границы для игрока
+const minX = 200;
+const maxX = 900;
+
+// Настройки препятствий и монет
+const obstacles = [];
+const coins = [];
+const obstacleWidth = 60;
+const obstacleHeight = 60;
+const coinWidth = 40;
+const coinHeight = 40;
+let obstacleSpeed = 5.2;
+let obstacleInterval;
+let coinInterval;
+
+// Переменные для фона
+let backgroundY1 = 0;
+let backgroundY2 = -canvas.height;
+
+// Функция обновления игры
+function update() {
+  if (gameRunning) {
+    clearCanvas();        // Очистка холста
+    drawBackground();     // Отрисовка фона
+    drawPlayer();         // Отрисовка игрока
+    movePlayer();         // Движение игрока
+    drawObstacles();      // Отрисовка препятствий
+    drawCoins();          // Отрисовка монет
+    updateObstacles();    // Обновление состояния препятствий
+    updateCoins();        // Обновление состояния монет
+    drawScore();          // Отображение счета
+    requestAnimationFrame(update);
+  } else {
+    displayGameOver();    // Отображение сообщения о завершении игры
+  }
+}
+
+// Очистка холста
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Отрисовка фона
+function drawBackground() {
+  ctx.drawImage(backgroundImg, 0, backgroundY1, canvas.width, canvas.height);
+  ctx.drawImage(backgroundImg, 0, backgroundY2, canvas.width, canvas.height);
+
+  backgroundY1 += obstacleSpeed / 2;
+  backgroundY2 += obstacleSpeed / 2;
+
+  if (backgroundY1 >= canvas.height) {
+    backgroundY1 = -canvas.height + (backgroundY1 - canvas.height);
+  }
+  if (backgroundY2 >= canvas.height) {
+    backgroundY2 = -canvas.height + (backgroundY2 - canvas.height);
+  }
+}
+
+// Отрисовка игрока
+function drawPlayer() {
+  ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+}
+
+// Движение игрока с учетом границ
+function movePlayer() {
+  player.x += player.dx;
+  if (player.x < minX) {
+    player.x = minX;
+  } else if (player.x + player.width > maxX + player.width) {
+    player.x = maxX;
+  }
+}
+
+// Создание нового препятствия
+function createObstacle() {
+  const minXObstacle = minX;
+  const maxXObstacle = maxX - obstacleWidth;
+  const x = Math.random() * (maxXObstacle - minXObstacle) + minXObstacle;
+  obstacles.push({ x, y: 0, width: obstacleWidth, height: obstacleHeight });
+}
+
+// Создание новой монеты
+function createCoin() {
+  const minXCoin = minX;
+  const maxXCoin = maxX - coinWidth;
+  const x = Math.random() * (maxXCoin - minXCoin) + minXCoin;
+  coins.push({ x, y: 0, width: coinWidth, height: coinHeight });
+}
+
+// Отрисовка препятствий
+function drawObstacles() {
+  obstacles.forEach(obstacle => {
+    ctx.drawImage(obstacleImg, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+  });
+}
+
+// Отрисовка монет
+function drawCoins() {
+  coins.forEach(coin => {
+    ctx.drawImage(coinImg, coin.x, coin.y, coin.width, coin.height);
+  });
+}
+
+// Обновление состояния препятствий
+function updateObstacles() {
+  obstacles.forEach((obstacle, index) => {
+    obstacle.y += obstacleSpeed;
+    if (collisionDetection(player, obstacle)) {
+      gameRunning = false;
+    }
+    if (obstacle.y > canvas.height) {
+      obstacles.splice(index, 1);
+      score++;
+    }
+  });
+}
+
+// Обновление состояния монет
+function updateCoins() {
+  coins.forEach((coin, index) => {
+    coin.y += obstacleSpeed;
+    if (collisionDetection(player, coin)) {
+      score += 10;
+      coins.splice(index, 1);
+    }
+    if (coin.y > canvas.height) {
+      coins.splice(index, 1);
+    }
+  });
+}
+
+// Проверка на столкновение игрока с объектом
+function collisionDetection(player, object) {
+  return (
+    player.x < object.x + object.width &&
+    player.x + player.width > object.x &&
+    player.y < object.y + object.height &&
+    player.y + player.height > object.y
+  );
+}
+
+// Отображение счета
+function drawScore() {
+  ctx.font = '20px Arial';
+  ctx.fillStyle = 'white';
+  ctx.fillText(`Score: ${score}`, canvas.width - 100, 30);
+}
+
+// Отображение сообщения о завершении игры
+function displayGameOver() {
+  ctx.font = '40px Arial';
+  ctx.fillStyle = 'red';
+  ctx.fillText('Game over', canvas.width / 2 - 100, canvas.height / 2);
+
+  // Создание кнопки Restart
+  const restartButton = document.createElement('button');
+  restartButton.id = 'restartButton';
+  restartButton.className = 'btn btn-primary';
+  restartButton.innerText = 'Restart';
+  restartButton.style.position = 'absolute';
+  restartButton.style.left = `${canvas.offsetLeft + canvas.width / 2 - 50}px`;
+  restartButton.style.top = `${canvas.offsetTop + canvas.height / 2 + 40}px`;
+  restartButton.addEventListener('click', restartGame);
+
+  document.body.appendChild(restartButton);
+}
+
+// Перезапуск игры
+function restartGame() {
+  score = 0;
+  gameRunning = true;
+  player.x = canvas.width / 2 - 60;
+  player.y = canvas.height / 1.1 - 60;
+  obstacles.length = 0;
+  coins.length = 0;
+  clearInterval(obstacleInterval);
+  clearInterval(coinInterval);
+  obstacleInterval = setInterval(createObstacle, 2000);
+  coinInterval = setInterval(createCoin, 5000); // Создание монет каждые 5 секунд
+  
+  // Удаление кнопки Restart
+  const restartButton = document.getElementById('restartButton');
+  if (restartButton) {
+    restartButton.remove();
+  }
+  
+  update();
+}
+
+// Обработка нажатий клавиш для управления игроком
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') {
+    player.dx = player.speed;
+  } else if (e.key === 'ArrowLeft') {
+    player.dx = -player.speed;
+  }
+});
+
+// Остановка движения игрока при отпускании клавиш
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    player.dx = 0;
+  }
+});
+
+// Обработка изменения сложности
+document.getElementById('difficulty').addEventListener('change', (e) => {
+  difficulty = e.target.value;
+  switch (difficulty) {
+    case 'easy':
+      obstacleSpeed = 3;
+      break;
+    case 'medium':
+      obstacleSpeed = 5.2;
+      break;
+    case 'hard':
+      obstacleSpeed = 7;
+      break;
+  }
+  restartGame();
+});
+
+// Запуск игры
+obstacleInterval = setInterval(createObstacle, 2000);
+coinInterval = setInterval(createCoin, 5000);
+update();
